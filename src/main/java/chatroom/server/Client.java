@@ -21,18 +21,33 @@ public class Client {
 	private final String username;
 	private final String token;
 	private final List<Message> messages = new ArrayList<>();
+	private static final ArrayList<GroupChat> groups = new ArrayList<>();
 	private Instant lastUsage = Instant.now();
 
 	// Messages pending for this user. Chatroom is null for direct messages
 	// from a user. The username is the sending user. The message is obvious.
-	private record Message(String username, String message) {}
+	private record Message(String username, String message, String groupName, boolean isGroupMessage) {} // implement GroupChat here
 
+	private record GroupChat(String groupName, String groupId, ArrayList<String> clients){}
 	/**
 	 * Add a new client to our list of active clients.
 	 */
 	public static void add(String username, String token) {
 		synchronized (clients) {
 			clients.add(new Client(username, token));
+		}
+	}
+
+	public static void createGroupChat(String groupName, String groupId, ArrayList<String> clients){
+		GroupChat groupChat = new GroupChat(groupName, groupId, clients);
+		groups.add(groupChat);
+	}
+
+	public static void addClientToGroup(String groupId, String username){
+		for(GroupChat groupChat : groups){
+			if(groupChat.groupId.equals(groupId)){
+				groupChat.clients.add(username);
+			}
 		}
 	}
 
@@ -117,9 +132,13 @@ public class Client {
 	/**
 	 * Send a message to this client.
 	 */
-	public void send(String username, String message) {
+	public void send(String username, String message, String groupName) {
 		synchronized (messages) {
-			messages.add(new Message(username, message));
+			boolean isGroupMessage = false;
+			if(groupName != null){
+				isGroupMessage = true;
+			}
+			messages.add(new Message(username, message, groupName, isGroupMessage));
 		}
 	}
 
@@ -131,8 +150,14 @@ public class Client {
 		synchronized (messages) {
 			for (Message msg : messages) {
 				JSONObject jsonMsg = (new JSONObject())
-						.put("username", msg.username)
-						.put("message", msg.message);
+						.put("username", msg.username);
+						if(msg.isGroupMessage){
+							jsonMsg.put("message", msg.message);
+							jsonMsg.put("groupName", msg.groupName);
+						} else{
+							jsonMsg.put("message", msg.message);
+						}
+
 				jsonMessages.put(jsonMsg);
 			}
 			messages.clear();

@@ -13,13 +13,18 @@ public class ChatHandler extends Handler {
         String username = readString(JSONin, "username");
         String message = readString(JSONin, "message");
         String token = readString(JSONin, "token");
+        String groupName = readString(JSONin, "groupName");
 
         // If anything at all goes wrong, we throw an exception and return an error
         try {
             switch (mapping) {
                 case "/chat/send" -> {
-                    if (token == null || username == null || message == null) throw new Exception("Invalid parameters");
-                    sendMessage(token, username, message, response);
+                    if (token == null || username == null || message == null) {
+                        throw new Exception("Invalid parameters");
+                    } else{
+                        sendMessage(token, username, message, response, groupName);
+                    }
+
                 }
                 case "/chat/poll" -> {
                     if (token == null) throw new Exception("Invalid parameters");
@@ -34,13 +39,13 @@ public class ChatHandler extends Handler {
         }
     }
 
-    private void sendMessage(String token, String username, String message, HandlerResponse response) throws Exception {
+    private void sendMessage(String token, String username, String message, HandlerResponse response, String groupName) throws Exception {
         boolean success = false;
         Client sender = Client.findByToken(token);
         if (sender == null) throw new Exception("Invalid token");
         Client recipient = Client.findByUsername(username);
         if (recipient != null) {
-            recipient.send(sender.getName(), message);
+            recipient.send(sender.getName(), message, groupName);
             success = true;
         }
         response.jsonOut.put("send", success);
