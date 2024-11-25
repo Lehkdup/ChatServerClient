@@ -29,7 +29,7 @@ public class Client {
 	// from a user. The username is the sending user. The message is obvious.
 	private record Message(String username, String message, String groupName, boolean isGroupMessage) {}
 
-	private record GroupChat(String groupName, Integer groupId, ArrayList<String> clients){}
+	private record GroupChat(String groupName, Integer groupId, ArrayList<String> clients, String creator){}
 	/**
 	 * Add a new client to our list of active clients.
 	 */
@@ -40,12 +40,12 @@ public class Client {
 	}
 
 	/**
-		Create a new GroupChat with auto-generated id. Return the id.
+	 * Create a new GroupChat with auto-generated id. Return the id.
 	 */
-	public static Integer createGroupChat(String groupName, ArrayList<String> clients){
+	public static Integer createGroupChat(String groupName, ArrayList<String> clients, String creator){
 		synchronized (idOfLastGroupChat) {
 			idOfLastGroupChat++;
-			GroupChat groupChat = new GroupChat(groupName, idOfLastGroupChat, clients);
+			GroupChat groupChat = new GroupChat(groupName, idOfLastGroupChat, clients, creator);
 			synchronized (groups) {
 				groups.add(groupChat);
 			}
@@ -53,14 +53,47 @@ public class Client {
 		}
 	}
 
-	public static GroupChat joinGroupChat(String groupId, String username){
-		for(GroupChat groupChat : groups){
-			if(groupChat.groupId.equals(groupId)){
-				groupChat.clients.add(username);
-				return groupChat;
+	/**
+	 * Join an existing GroupChat by inserting the groupId and username.
+	 */
+	public static GroupChat joinGroupChat(int groupId, String username){
+		synchronized (groups) {
+			for (GroupChat groupChat : groups) {
+				if (groupChat.groupId == groupId) {
+					synchronized (clients) {
+						groupChat.clients.add(username);
+					}
+					return groupChat;
+				}
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Leave an existing group chat. Insert groupId and username of the person leaving the group.
+	 */
+	public static void leaveGroupChat(int groupId, String username){
+		synchronized (groups) {
+			for (GroupChat groupChat : groups) {
+				if (groupChat.groupId == groupId) {
+					groupChat.clients.removeIf(user -> user.equals(username));
+				}
+			}
+		}
+	}
+
+	/**
+	 * Delete a group chat only if the call comes from the creator and has a valid groupId.
+	 */
+	public static void deleteGroupChat(int groupId, String creator){
+		synchronized (groups){
+			for(GroupChat groupChat : groups){
+				if(groupChat.groupId == groupId && groupChat.creator.equals(creator)){
+					groups.removeIf(group -> group.groupId == groupId);
+				}
+			}
+		}
 	}
 
 	/**
