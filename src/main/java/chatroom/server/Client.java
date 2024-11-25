@@ -22,13 +22,14 @@ public class Client {
 	private final String token;
 	private final List<Message> messages = new ArrayList<>();
 	private static final ArrayList<GroupChat> groups = new ArrayList<>();
+	private static Integer idOfLastGroupChat = 0;
 	private Instant lastUsage = Instant.now();
 
 	// Messages pending for this user. Chatroom is null for direct messages
 	// from a user. The username is the sending user. The message is obvious.
-	private record Message(String username, String message, String groupName, boolean isGroupMessage) {} // implement GroupChat here
+	private record Message(String username, String message, String groupName, boolean isGroupMessage) {}
 
-	private record GroupChat(String groupName, String groupId, ArrayList<String> clients){}
+	private record GroupChat(String groupName, Integer groupId, ArrayList<String> clients){}
 	/**
 	 * Add a new client to our list of active clients.
 	 */
@@ -38,17 +39,28 @@ public class Client {
 		}
 	}
 
-	public static void createGroupChat(String groupName, String groupId, ArrayList<String> clients){
-		GroupChat groupChat = new GroupChat(groupName, groupId, clients);
-		groups.add(groupChat);
+	/**
+		Create a new GroupChat with auto-generated id. Return the id.
+	 */
+	public static Integer createGroupChat(String groupName, ArrayList<String> clients){
+		synchronized (idOfLastGroupChat) {
+			idOfLastGroupChat++;
+			GroupChat groupChat = new GroupChat(groupName, idOfLastGroupChat, clients);
+			synchronized (groups) {
+				groups.add(groupChat);
+			}
+			return idOfLastGroupChat;
+		}
 	}
 
-	public static void addClientToGroup(String groupId, String username){
+	public static GroupChat joinGroupChat(String groupId, String username){
 		for(GroupChat groupChat : groups){
 			if(groupChat.groupId.equals(groupId)){
 				groupChat.clients.add(username);
+				return groupChat;
 			}
 		}
+		return null;
 	}
 
 	/**
