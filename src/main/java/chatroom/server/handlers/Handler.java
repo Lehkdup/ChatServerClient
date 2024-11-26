@@ -2,6 +2,7 @@ package chatroom.server.handlers;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -9,6 +10,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * This class provides the top-level functionality for answering requests.
@@ -106,6 +111,27 @@ public abstract class Handler implements HttpHandler  {
         try {
             return obj.getString(key);
         } catch (JSONException e) {
+            return null;
+        }
+    }
+
+    protected List<String> readList(JSONObject obj, String key){
+        try{
+            JSONArray jsonArray = obj.getJSONArray(key);
+            List<String> list = IntStream.range(0, jsonArray.length())
+                    .mapToObj(jsonArray::getString)
+                    .collect(Collectors.toList());
+            return list;
+            }
+        catch (JSONException e){
+            return null;
+        }
+    }
+
+    protected Integer readInt(JSONObject obj, String key){
+        try {
+            return obj.getInt(key);
+        } catch (JSONException e){
             return null;
         }
     }

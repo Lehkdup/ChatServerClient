@@ -21,15 +21,18 @@ public class Client {
 	private final String username;
 	private final String token;
 	private final List<Message> messages = new ArrayList<>();
-	private static final ArrayList<GroupChat> groups = new ArrayList<>();
+	private static ArrayList<GroupChat> groups = new ArrayList<>();
 	private static Integer idOfLastGroupChat = 0;
 	private Instant lastUsage = Instant.now();
 
 	// Messages pending for this user. Chatroom is null for direct messages
 	// from a user. The username is the sending user. The message is obvious.
-	private record Message(String username, String message, String groupName, boolean isGroupMessage) {}
+	private record Message(String username, String message, String groupName, boolean isGroupMessage) {
+	}
 
-	private record GroupChat(String groupName, Integer groupId, ArrayList<String> clients, String creator){}
+	public record GroupChat(String groupName, Integer groupId, List<String> clients, String creator) {
+	}
+
 	/**
 	 * Add a new client to our list of active clients.
 	 */
@@ -42,7 +45,7 @@ public class Client {
 	/**
 	 * Create a new GroupChat with auto-generated id. Return the id.
 	 */
-	public static Integer createGroupChat(String groupName, ArrayList<String> clients, String creator){
+	public static Integer createGroupChat(String groupName, List<String> clients, String creator) {
 		synchronized (idOfLastGroupChat) {
 			idOfLastGroupChat++;
 			GroupChat groupChat = new GroupChat(groupName, idOfLastGroupChat, clients, creator);
@@ -56,7 +59,7 @@ public class Client {
 	/**
 	 * Join an existing GroupChat by inserting the groupId and username.
 	 */
-	public static GroupChat joinGroupChat(int groupId, String username){
+	public static GroupChat joinGroupChat(int groupId, String username) {
 		synchronized (groups) {
 			for (GroupChat groupChat : groups) {
 				if (groupChat.groupId == groupId) {
@@ -73,7 +76,7 @@ public class Client {
 	/**
 	 * Leave an existing group chat. Insert groupId and username of the person leaving the group.
 	 */
-	public static void leaveGroupChat(int groupId, String username){
+	public static void leaveGroupChat(int groupId, String username) {
 		synchronized (groups) {
 			for (GroupChat groupChat : groups) {
 				if (groupChat.groupId == groupId) {
@@ -86,10 +89,10 @@ public class Client {
 	/**
 	 * Delete a group chat only if the call comes from the creator and has a valid groupId.
 	 */
-	public static void deleteGroupChat(int groupId, String creator){
-		synchronized (groups){
-			for(GroupChat groupChat : groups){
-				if(groupChat.groupId == groupId && groupChat.creator.equals(creator)){
+	public static void deleteGroupChat(int groupId, String creator) {
+		synchronized (groups) {
+			for (GroupChat groupChat : groups) {
+				if (groupChat.groupId == groupId && groupChat.creator.equals(creator)) {
 					groups.removeIf(group -> group.groupId == groupId);
 				}
 			}
@@ -136,7 +139,7 @@ public class Client {
 		synchronized (clients) {
 			Instant expiry = Instant.now().minusSeconds(3600); // Expiry one hour
 			logger.fine("Cleanup clients: " + clients.size() + " clients registered");
-			clients.removeIf( c -> c.lastUsage.isBefore(expiry));
+			clients.removeIf(c -> c.lastUsage.isBefore(expiry));
 			logger.fine("Cleanup clients: " + clients.size() + " clients registered");
 		}
 	}
@@ -145,7 +148,7 @@ public class Client {
 	 * Return a list of all clients
 	 */
 	public static List<String> listClients() {
-		return clients.stream().map( c -> c.username ).collect(Collectors.toList());
+		return clients.stream().map(c -> c.username).collect(Collectors.toList());
 	}
 
 	/**
@@ -180,7 +183,7 @@ public class Client {
 	public void send(String username, String message, String groupName) {
 		synchronized (messages) {
 			boolean isGroupMessage = false;
-			if(groupName != null){
+			if (groupName != null) {
 				isGroupMessage = true;
 			}
 			messages.add(new Message(username, message, groupName, isGroupMessage));
@@ -196,12 +199,12 @@ public class Client {
 			for (Message msg : messages) {
 				JSONObject jsonMsg = (new JSONObject())
 						.put("username", msg.username);
-						if(msg.isGroupMessage){
-							jsonMsg.put("message", msg.message);
-							jsonMsg.put("groupName", msg.groupName);
-						} else{
-							jsonMsg.put("message", msg.message);
-						}
+				if (msg.isGroupMessage) {
+					jsonMsg.put("message", msg.message);
+					jsonMsg.put("groupName", msg.groupName);
+				} else {
+					jsonMsg.put("message", msg.message);
+				}
 
 				jsonMessages.put(jsonMsg);
 			}
@@ -209,5 +212,18 @@ public class Client {
 		}
 		updateLastUsage();
 		return jsonMessages;
+	}
+
+	public static ArrayList<GroupChat> getGroups() {
+		return groups;
+	}
+
+	public List<String> getGroupChatMembers(int groupId) {
+		for (GroupChat groupChat : groups) {
+			if (groupChat.groupId == groupId) {
+				return groupChat.clients;
+			}
+		}
+		return null;
 	}
 }
