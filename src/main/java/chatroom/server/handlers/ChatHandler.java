@@ -25,17 +25,20 @@ public class ChatHandler extends Handler {
         try {
             switch (mapping) {
                 case "/chat/send" -> {
-                    if (token == null || username == null || message == null) {
+                    if (token == null || message == null) {
                         throw new Exception("Invalid parameters");
-                    } else{
-                        sendMessage(token, username, message, response, groupName);
+                    } else if(username == null && groupId == null){
+                        throw new Exception("Define a username or a groupId to send the message");
+                    }
+                    else{
+                        sendMessage(token, username, message, response, groupId);
                     }
                 }
                 case "/chat/poll" -> {
                     if (token == null) throw new Exception("Invalid parameters");
                     receiveMessages(token, response);
                 }
-                case "/chatrooms" -> {
+                case "/chatroom" -> {
                     if (token == null) throw new Exception("Invalid parameters");
                     getAllGroupChats(token);
                 }
@@ -83,13 +86,18 @@ public class ChatHandler extends Handler {
         }
     }
 
-    private void sendMessage(String token, String username, String message, HandlerResponse response, String groupName) throws Exception {
+    private void sendMessage(String token, String username, String message, HandlerResponse response, Integer groupId) throws Exception {
         boolean success = false;
         Client sender = Client.findByToken(token);
         if (sender == null) throw new Exception("Invalid token");
-        Client recipient = Client.findByUsername(username);
+        Client recipient = null;
+        if (groupId == null){
+            recipient = Client.findByUsername(username);
+        } else {
+            recipient = Client.findByGroupId(groupId);
+        }
         if (recipient != null) {
-            recipient.send(sender.getName(), message, groupName);
+            recipient.send(sender.getName(), message, groupId);
             success = true;
         }
         response.jsonOut.put("send", success);

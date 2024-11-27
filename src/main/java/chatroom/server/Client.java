@@ -27,7 +27,7 @@ public class Client {
 
 	// Messages pending for this user. Chatroom is null for direct messages
 	// from a user. The username is the sending user. The message is obvious.
-	private record Message(String username, String message, String groupName, boolean isGroupMessage) {
+	private record Message(String username, String message, Integer groupId, boolean isGroupMessage) {
 	}
 
 	public record GroupChat(String groupName, Integer groupId, List<String> clients, String creator) {
@@ -120,6 +120,19 @@ public class Client {
 		return null;
 	}
 
+	public static Client findByGroupId(int groupId){
+		synchronized (clients){
+			for(Client client : clients){
+				synchronized (groups){
+					for(GroupChat groupChat : client.groups){
+						if(groupChat.groupId == groupId) return client;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
 	/**
 	 * Returns a client, found by token
 	 */
@@ -180,13 +193,13 @@ public class Client {
 	/**
 	 * Send a message to this client.
 	 */
-	public void send(String username, String message, String groupName) {
+	public void send(String username, String message, Integer groupId) {
 		synchronized (messages) {
 			boolean isGroupMessage = false;
-			if (groupName != null) {
+			if (groupId != null) {
 				isGroupMessage = true;
 			}
-			messages.add(new Message(username, message, groupName, isGroupMessage));
+			messages.add(new Message(username, message, groupId, isGroupMessage));
 		}
 	}
 
@@ -201,7 +214,7 @@ public class Client {
 						.put("username", msg.username);
 				if (msg.isGroupMessage) {
 					jsonMsg.put("message", msg.message);
-					jsonMsg.put("groupName", msg.groupName);
+					jsonMsg.put("groupName", groupIdToGroupNameMapper(msg.groupId));
 				} else {
 					jsonMsg.put("message", msg.message);
 				}
@@ -219,9 +232,22 @@ public class Client {
 	}
 
 	public List<String> getGroupChatMembers(int groupId) {
-		for (GroupChat groupChat : groups) {
-			if (groupChat.groupId == groupId) {
-				return groupChat.clients;
+		synchronized (groups){
+			for (GroupChat groupChat : groups) {
+				if (groupChat.groupId == groupId) {
+					return groupChat.clients;
+				}
+			}
+		}
+		return null;
+	}
+
+	private String groupIdToGroupNameMapper(int groupId){
+		synchronized (groups){
+			for (GroupChat groupChat : groups){
+				if(groupChat.groupId == groupId){
+					return groupChat.groupName;
+				}
 			}
 		}
 		return null;
