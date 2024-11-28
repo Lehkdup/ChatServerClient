@@ -32,7 +32,7 @@ public class ChatHandler extends Handler {
         List<String> clients = readList(JSONin, "clients");
         Integer chatroomId = readInt(JSONin, "chatroomId");
 
-        // If anything at all goes wrong, we throw an exception and return an error
+        // If anything at all goes wrong, we throw an exception and return an error.
         try {
             switch (mapping) {
                 case "/chat/send" -> {
