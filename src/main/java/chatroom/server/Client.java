@@ -21,17 +21,18 @@ public class Client {
 	private final String username;
 	private final String token;
 	private final List<Message> messages = new ArrayList<>();
-	private static ArrayList<GroupChat> groups = new ArrayList<>();
-	private static Integer idOfLastGroupChat = 0;
+	private final List<ChatroomMessage> chatroomMessages = new ArrayList<>();
+	private final List<Integer> chatrooms = new ArrayList<>();
+	//private static ArrayList<GroupChat> groups = new ArrayList<>();
+	//private static Integer idOfLastGroupChat = 0;
 	private Instant lastUsage = Instant.now();
 
 	// Messages pending for this user. Chatroom is null for direct messages
 	// from a user. The username is the sending user. The message is obvious.
-	private record Message(String username, String message, Integer groupId, boolean isGroupMessage) {
-	}
+	private record Message(String username, String message) {}
+	private record ChatroomMessage(Integer groupId, String username, String message) {}
 
-	public record GroupChat(String groupName, Integer groupId, List<String> clients, String creator) {
-	}
+	//public record GroupChat(String groupName, Integer groupId, List<String> clients, String creator) {}
 
 	/**
 	 * Add a new client to our list of active clients.
@@ -45,59 +46,59 @@ public class Client {
 	/**
 	 * Create a new GroupChat with auto-generated id. Return the id.
 	 */
-	public static Integer createGroupChat(String groupName, List<String> clients, String creator) {
-		synchronized (idOfLastGroupChat) {
-			idOfLastGroupChat++;
-			GroupChat groupChat = new GroupChat(groupName, idOfLastGroupChat, clients, creator);
-			synchronized (groups) {
-				groups.add(groupChat);
-			}
-			return idOfLastGroupChat;
-		}
-	}
+//	public static Integer createGroupChat(String groupName, List<String> clients, String creator) {
+//		synchronized (idOfLastGroupChat) {
+//			idOfLastGroupChat++;
+//			GroupChat groupChat = new GroupChat(groupName, idOfLastGroupChat, clients, creator);
+//			synchronized (groups) {
+//				groups.add(groupChat);
+//			}
+//			return idOfLastGroupChat;
+//		}
+//	}
 
 	/**
 	 * Join an existing GroupChat by inserting the groupId and username.
 	 */
-	public static GroupChat joinGroupChat(int groupId, String username) {
-		synchronized (groups) {
-			for (GroupChat groupChat : groups) {
-				if (groupChat.groupId == groupId) {
-					synchronized (clients) {
-						groupChat.clients.add(username);
-					}
-					return groupChat;
-				}
-			}
-		}
-		return null;
-	}
+//	public static GroupChat joinGroupChat(int groupId, String username) {
+//		synchronized (groups) {
+//			for (GroupChat groupChat : groups) {
+//				if (groupChat.groupId == groupId) {
+//					synchronized (clients) {
+//						groupChat.clients.add(username);
+//					}
+//					return groupChat;
+//				}
+//			}
+//		}
+//		return null;
+//	}
 
 	/**
 	 * Leave an existing group chat. Insert groupId and username of the person leaving the group.
 	 */
-	public static void leaveGroupChat(int groupId, String username) {
-		synchronized (groups) {
-			for (GroupChat groupChat : groups) {
-				if (groupChat.groupId == groupId) {
-					groupChat.clients.removeIf(user -> user.equals(username));
-				}
-			}
-		}
-	}
+//	public static void leaveGroupChat(int groupId, String username) {
+//		synchronized (groups) {
+//			for (GroupChat groupChat : groups) {
+//				if (groupChat.groupId == groupId) {
+//					groupChat.clients.removeIf(user -> user.equals(username));
+//				}
+//			}
+//		}
+//	}
 
 	/**
 	 * Delete a group chat only if the call comes from the creator and has a valid groupId.
 	 */
-	public static void deleteGroupChat(int groupId, String creator) {
-		synchronized (groups) {
-			for (GroupChat groupChat : groups) {
-				if (groupChat.groupId == groupId && groupChat.creator.equals(creator)) {
-					groups.removeIf(group -> group.groupId == groupId);
-				}
-			}
-		}
-	}
+//	public static void deleteGroupChat(int groupId, String creator) {
+//		synchronized (groups) {
+//			for (GroupChat groupChat : groups) {
+//				if (groupChat.groupId == groupId && groupChat.creator.equals(creator)) {
+//					groups.removeIf(group -> group.groupId == groupId);
+//				}
+//			}
+//		}
+//	}
 
 	/**
 	 * Remove a client (e.g., when they logout)
@@ -120,18 +121,18 @@ public class Client {
 		return null;
 	}
 
-	public static Client findByGroupId(int groupId){
-		synchronized (clients){
-			for(Client client : clients){
-				synchronized (groups){
-					for(GroupChat groupChat : client.groups){
-						if(groupChat.groupId == groupId) return client;
-					}
-				}
-			}
-		}
-		return null;
-	}
+//	public static Client findByGroupId(int groupId){
+//		synchronized (clients){
+//			for(Client client : clients){
+//				synchronized (groups){
+//					for(GroupChat groupChat : client.groups){
+//						if(groupChat.groupId == groupId) return client;
+//					}
+//				}
+//			}
+//		}
+//		return null;
+//	}
 
 	/**
 	 * Returns a client, found by token
@@ -193,63 +194,73 @@ public class Client {
 	/**
 	 * Send a message to this client.
 	 */
-	public void send(String username, String message, Integer groupId) {
+	public void send(String username, String message) {
 		synchronized (messages) {
-			boolean isGroupMessage = false;
-			if (groupId != null) {
-				isGroupMessage = true;
-			}
-			messages.add(new Message(username, message, groupId, isGroupMessage));
+			messages.add(new Message(username, message));
 		}
 	}
 
 	/**
 	 * Retrieve messages for this client
 	 */
-	public JSONArray getMessages() {
+	public synchronized JSONArray getMessages() {
 		JSONArray jsonMessages = new JSONArray();
-		synchronized (messages) {
-			for (Message msg : messages) {
-				JSONObject jsonMsg = (new JSONObject())
-						.put("username", msg.username);
-				if (msg.isGroupMessage) {
-					jsonMsg.put("message", msg.message);
-					jsonMsg.put("groupName", groupIdToGroupNameMapper(msg.groupId));
-				} else {
-					jsonMsg.put("message", msg.message);
-				}
-
-				jsonMessages.put(jsonMsg);
-			}
-			messages.clear();
+		for (Message msg : messages) {
+			JSONObject jsonMsg = (new JSONObject())
+					.put("username", msg.username);
+			jsonMsg.put("message", msg.message);
+			jsonMessages.put(jsonMsg);
 		}
+		messages.clear();
+
+		for (ChatroomMessage chatroomMessage : chatroomMessages){
+			JSONObject jsonMsg = (new JSONObject())
+					.put("username", chatroomMessage.username);
+			jsonMsg.put("chatroomName", Chatroom.findByChatroomId(chatroomMessage.groupId).getChatroomName());
+			jsonMsg.put("message", chatroomMessage.message);
+			jsonMessages.put(jsonMsg);
+		}
+		chatroomMessages.clear();
+
 		updateLastUsage();
 		return jsonMessages;
 	}
 
-	public static ArrayList<GroupChat> getGroups() {
-		return groups;
+	public void addToChatroom (int chatroomId){
+		synchronized (chatrooms){
+			chatrooms.add(chatroomId);
+		}
 	}
 
-	public List<String> getGroupChatMembers(int groupId) {
-		synchronized (groups){
-			for (GroupChat groupChat : groups) {
-				if (groupChat.groupId == groupId) {
-					return groupChat.clients;
-				}
-			}
+	public void addChatroomMessage (Integer groupId, String username, String message) {
+		synchronized (chatroomMessages){
+			chatroomMessages.add(new ChatroomMessage(groupId, username, message));
 		}
-		return null;
 	}
 
-	private String groupIdToGroupNameMapper(int groupId){
-		synchronized (groups){
-			for (GroupChat groupChat : groups){
-				if(groupChat.groupId == groupId){
-					return groupChat.groupName;
-				}
-			}
-		}
-		return null;
-	}
+//	public static ArrayList<GroupChat> getGroups() {
+//		return groups;
+//	}
+
+//	public List<String> getGroupChatMembers(int groupId) {
+//		synchronized (groups){
+//			for (GroupChat groupChat : groups) {
+//				if (groupChat.groupId == groupId) {
+//					return groupChat.clients;
+//				}
+//			}
+//		}
+//		return null;
+//	}
+
+//	private String groupIdToGroupNameMapper(int groupId){
+//		synchronized (groups){
+//			for (GroupChat groupChat : groups){
+//				if(groupChat.groupId == groupId){
+//					return groupChat.groupName;
+//				}
+//			}
+//		}
+//		return null;
+//	}
 }
