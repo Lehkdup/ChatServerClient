@@ -10,6 +10,16 @@ import java.util.List;
 
 public class ChatHandler extends Handler {
     @Override
+    protected void handleGet(HttpExchange httpExchange, HandlerResponse response) {
+        String mapping = httpExchange.getRequestURI().toString();
+        if (mapping.equals("/chatroom")){
+            response.jsonOut.put("groupChats", getAllGroupChats());
+        } else {
+            response.jsonOut.put("Error", "Invalid request");
+        }
+    }
+
+    @Override
     protected void handlePost(HttpExchange httpExchange, JSONObject JSONin, HandlerResponse response) {
         String mapping = httpExchange.getRequestURI().toString(); // For this handler, will begin with "/user"
 
@@ -37,10 +47,6 @@ public class ChatHandler extends Handler {
                 case "/chat/poll" -> {
                     if (token == null) throw new Exception("Invalid parameters");
                     receiveMessages(token, response);
-                }
-                case "/chatroom" -> {
-                    if (token == null) throw new Exception("Invalid parameters");
-                    getAllGroupChats(token);
                 }
                 case "/chatroom/create" -> {
                     if (token == null || groupName == null || clients == null) {
@@ -109,11 +115,9 @@ public class ChatHandler extends Handler {
         response.jsonOut.put("messages", client.getMessages());
     }
 
-    private JSONArray getAllGroupChats(String token) throws Exception{
+    private JSONArray getAllGroupChats() {
         JSONArray groupsArray = new JSONArray();
-        Client client = Client.findByToken(token);
-        if (client == null) throw new Exception("Invalid token");
-        for(Client.GroupChat groupChat : client.getGroups()){
+        for(Client.GroupChat groupChat : Client.getGroups()){
             groupsArray.put(groupChat);
         }
         return groupsArray;
