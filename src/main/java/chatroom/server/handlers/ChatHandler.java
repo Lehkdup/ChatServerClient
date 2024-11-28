@@ -1,5 +1,6 @@
 package chatroom.server.handlers;
 
+import chatroom.server.Chatroom;
 import chatroom.server.Client;
 import com.sun.net.httpserver.HttpExchange;
 import org.json.JSONArray;
@@ -96,14 +97,14 @@ public class ChatHandler extends Handler {
         boolean success = false;
         Client sender = Client.findByToken(token);
         if (sender == null) throw new Exception("Invalid token");
-        Client recipient = null;
+
         if (groupId == null){
-            recipient = Client.findByUsername(username);
+            Client recipient = Client.findByUsername(username);
+            recipient.send(sender.getName(), message);
+            success = true;
         } else {
-            recipient = Client.findByGroupId(groupId);
-        }
-        if (recipient != null) {
-            recipient.send(sender.getName(), message, groupId);
+            Chatroom chatroom = Chatroom.findByChatroomId(groupId);
+            chatroom.send(sender.getName(), message);
             success = true;
         }
         response.jsonOut.put("send", success);
@@ -117,43 +118,56 @@ public class ChatHandler extends Handler {
 
     private JSONArray getAllGroupChats() {
         JSONArray groupsArray = new JSONArray();
-        for(Client.GroupChat groupChat : Client.getGroups()){
-            groupsArray.put(groupChat);
+        for(Chatroom chatroom : Chatroom.getChatrooms()){
+            JSONObject chatroomJson = new JSONObject()
+                    .put("chatroomName", chatroom.getChatroomName());
+                    chatroomJson.put("chatroomId", chatroom.getChatroomId());
+                    chatroomJson.put("clients", new JSONArray(chatroom.getClients().stream()
+                            .map(Client::getName)
+                            .toList()));
+                    chatroomJson.put("creator", chatroom.getCreator().getName());
+            groupsArray.put(chatroomJson);
         }
         return groupsArray;
     }
 
-    private void createGroupChat(String token, String groupName, List<String> clients, HandlerResponse response) throws Exception{
+    private void createGroupChat(String token, String groupName, List<String> usernames, HandlerResponse response) throws Exception{
         Client client = Client.findByToken(token);
         if (client == null) throw new Exception("Invalid token");
-        int groupId = client.createGroupChat(groupName, clients, client.getName());
+        List<Client> clients = new ArrayList<>();
+        for (String s : usernames){
+            clients.add(Client.findByUsername(s));
+        }
+        Chatroom chatroom = new Chatroom(groupName, clients, client);
+        Chatroom.add(chatroom);
+        int groupId = chatroom.getChatroomId();
         response.jsonOut.put("groupId", groupId);
     }
 
     private void joinGroupChat(String token, int groupId, HandlerResponse response) throws Exception{
         Client client = Client.findByToken(token);
         if (client == null) throw new Exception("Invalid token");
-        response.jsonOut.put("groupChat", client.joinGroupChat(groupId, client.getName()));
+        response.jsonOut.put("groupChat", Chatroom.join(groupId, client));
     }
 
     private void leaveGroupChat(String token, int groupId, HandlerResponse response) throws Exception{
         Client client = Client.findByToken(token);
         if (client == null) throw new Exception("Invalid token");
-        client.leaveGroupChat(groupId, client.getName());
+        Chatroom.leaveChatroom(groupId, client);
         response.jsonOut.put("leftGroup", true);
     }
 
     private void deleteGroupChat(String token, int groupId, HandlerResponse response) throws Exception{
         Client client = Client.findByToken(token);
         if (client == null) throw new Exception("Invalid token");
-        client.deleteGroupChat(groupId, client.getName());
+        Chatroom.deleteChatroom(groupId, client);
         response.jsonOut.put("groupChatdeleted", true);
     }
 
     private void listGroupChatMembers(String token, int groupId, HandlerResponse response) throws Exception{
         Client client = Client.findByToken(token);
         if (client == null) throw new Exception("Invalid token");
-        response.jsonOut.put("groupChatMembers", client.getGroupChatMembers(groupId));
+        response.jsonOut.put("groupChatMembers", Chatroom.getChatroomMembers(groupId));
     }
 }
 
