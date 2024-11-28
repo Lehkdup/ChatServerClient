@@ -7,23 +7,22 @@ public class Chatroom {
 
     private final String chatroomName;
     private final Integer chatroomId;
-    private static Integer idOfLastGroupChat = 0;
+    private static Integer idOfLastChatroom = 0;
     private List<Client> clients;
     private Client creator;
     private static ArrayList<Chatroom> chatrooms = new ArrayList<>();
-    //private List<Message> messages = new ArrayList<>();
     public record Message(String username, String message) {
     }
 
+    /**
+     * Creates a new chatroom with auto-generated Id.
+     */
     public Chatroom(String chatroomName, List<Client> clients, Client creator) {
         this.chatroomName = chatroomName;
         this.clients = clients;
         this.creator = creator;
-        synchronized (idOfLastGroupChat){
-            chatroomId = ++idOfLastGroupChat;
-            for(Client client : clients){
-                client.addToChatroom(chatroomId);
-            }
+        synchronized (idOfLastChatroom){
+            chatroomId = ++idOfLastChatroom;
         }
     }
 
@@ -54,7 +53,7 @@ public class Chatroom {
     }
 
     /**
-     * Join an existing chatroom by inserting the groupId and client reference.
+     * Join an existing chatroom by inserting the chatroomId and client reference.
      */
     public static List<String> join(int chatroomId, Client client){
         synchronized (chatrooms){
@@ -71,7 +70,7 @@ public class Chatroom {
     }
 
     /**
-     * Leave an existing chatroom. Insert groupId and client reference of the person leaving the group.
+     * Leave an existing chatroom. Insert chatroomId and client reference of the person leaving the chatroom.
      */
     public static void leaveChatroom(int chatroomId, Client client){
         synchronized (chatrooms){
@@ -85,7 +84,7 @@ public class Chatroom {
     }
 
     /**
-     * Delete a group chat only if the call comes from the creator and has a valid groupId.
+     * Delete a chatroom only if the call comes from the creator and has a valid chatroomId.
      */
     public static void deleteChatroom(int chatroomId, Client client){
         synchronized (chatrooms){
@@ -97,6 +96,9 @@ public class Chatroom {
         }
     }
 
+    /**
+     * Get an instance of the Chatroom by inserting the chatroomId.
+     */
     public static Chatroom findByChatroomId(int chatroomId){
         synchronized (chatrooms){
             for (Chatroom chatroom : chatrooms){
@@ -106,6 +108,9 @@ public class Chatroom {
         return null;
     }
 
+    /**
+     * Get the usernames of all members of a Chatroom.
+     */
     public static List<String> getChatroomMembers (int chatroomId){
         synchronized (chatrooms){
             for (Chatroom chatroom : chatrooms){
@@ -119,17 +124,9 @@ public class Chatroom {
         return null;
     }
 
-//    public String chatroomIdToNameMapper (int chatroomId){
-//        synchronized (chatrooms){
-//            for (Chatroom chatroom : chatrooms){
-//                if (chatroom.chatroomId == chatroomId) {
-//                    return chatroom.chatroomName;
-//                }
-//            }
-//        }
-//        return null;
-//    }
-
+    /**
+     * Distributes the message to all clients (members).
+     */
     public void send(String username, String message){
         //synchronized (messages){
         //    messages.add(new Message(username, message));
@@ -140,27 +137,4 @@ public class Chatroom {
             }
         }
     }
-
-//    private void distributeChatroomMessage(String username, String message){
-//        synchronized (clients){
-//            for (Client client : clients){
-//                client.addChatroomMessage(chatroomId, username, message);
-//            }
-//        }
-//    }
-
-//    public boolean clientHasChatroomMessage (Client client){
-//        synchronized (messages){
-//             boolean result = messages.stream()
-//                    .flatMap(message -> chatrooms.stream()
-//                            .filter(chatroom -> message.chatroomId == chatroom.chatroomId)
-//                            .flatMap(chatroom -> chatroom.clients.stream()))
-//                    .anyMatch(c -> c.getName().equals(client.getName()));
-//             return result;
-//        }
-//    }
-
-//    public List<Message> getMessages() {
-//        return messages;
-//    }
 }
