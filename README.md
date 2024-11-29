@@ -33,7 +33,7 @@ The program can be started in the `Server.java` file. To test and/or use the end
 - POST `/chat/poll` requires a token, returns the message (either private or chatroom).
 
 ### Chatroom
-- GET `/chatrooms` returns all chatrooms.
+- GET `/chatroom` returns all chatrooms.
 - POST `/chatrooms/create` requires a token (creator), list of chatroom members (clients), and a chatroom name. Returns the auto-generated id for the chatroom.
 - POST `/chatrooms/join` requires a token (person joining) and chatroomId, returns the new list of members.
 - POST `/chatrooms/leave` requires a token (person leaving) and chatroomId, returns true.
