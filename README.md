@@ -12,7 +12,7 @@ The server runs as a standalone Java application. By default, it uses port 50001
 but this can be set on the command line.
 To run the server from the command line, enter: <code>java -jar chat-server.jar</code>
 
-The program can be started in the `Server.java` file. 
+The program can be started in the `Server.java` file. To test and/or use the endpoints provided below, test first with a GET `/ping` call. If that works, register and login a user via the according endpoints. 
 
 ## Endpoints
 
